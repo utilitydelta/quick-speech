@@ -1,0 +1,25 @@
+[project]
+name = "quick-speech"
+version = "0.1.0"
+description = "Speech-to-text with global F12 hotkey using OpenAI Whisper"
+requires-python = ">=3.9"
+dependencies = [
+    "faster-whisper>=1.0.0",
+    "sounddevice>=0.4.6",
+    "numpy>=1.24.0",
+    "pynput>=1.7.6",
+    "pyperclip>=1.8.2",
+]
+
+[project.scripts]
+quick-speech = "quick_speech.main:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+quick_speech = ["../assets/*.wav"]
