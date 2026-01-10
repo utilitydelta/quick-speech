@@ -52,6 +52,7 @@ class QuickSpeech:
     def _start_recording(self) -> None:
         """Start recording audio."""
         self.state = State.RECORDING
+        self.notifier.play_start(wait=True)
         set_system_mute(True)
         self.recorder.start()
         print("Recording... (press F9 to stop)")

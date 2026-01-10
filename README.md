@@ -1,6 +1,12 @@
 # Quick Speech
 
-Speech-to-text application for Ubuntu Linux using OpenAI Whisper with global F12 hotkey.
+Quick Speech runs in the background while you work. Hit F9 anytime you like, talk into your mic, hit F9 again to stop, and it'll be converted to text and copied into your clipboard. Save all that typing!
+
+- No auto-stop detection, explicit F9 to start, F9 to stop
+- Mutes your audio, so you can keep listening to your music :)
+- Audio queues for start and stop, so you know its working
+
+This is only tested on Ubuntu Linux x64. Probably doesn't work on anything else. Submit some PRs if you wanna fix that!
 
 ## Installation
 
@@ -9,7 +15,9 @@ Speech-to-text application for Ubuntu Linux using OpenAI Whisper with global F12
 sudo apt install -y python3-venv python3-dev portaudio19-dev libasound2-dev xclip
 
 # 2. Create virtual environment and install
-cd /home/utilitydelta/repos/utilitydelta/quick-speech
+cd ~/
+git clone https://github.com/utilitydelta/quick-speech
+cd ~/quick-speech
 python3 -m venv venv
 source venv/bin/activate
 pip install -e .
@@ -26,8 +34,8 @@ python -m quick_speech.main
 ```
 
 **Controls:**
-- Press **F12** to start recording
-- Press **F12** again to stop, transcribe, and copy to clipboard
+- Press **F9** to start recording
+- Press **F9** again to stop, transcribe, and copy to clipboard
 - **Ctrl+C** to exit
 
 ## Configuration
