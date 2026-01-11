@@ -1,6 +1,9 @@
 """Main entry point for Quick Speech application."""
 
+import signal
 import subprocess
+import sys
+import threading
 import time
 from enum import Enum, auto
 
@@ -13,11 +16,27 @@ from .transcriber import Transcriber
 
 
 def set_system_mute(mute: bool) -> None:
-    """Mute or unmute system audio using PipeWire."""
+    """Mute or unmute system audio."""
+    if sys.platform == "win32":
+        _set_system_mute_windows(mute)
+    else:
+        _set_system_mute_linux(mute)
+
+
+def _set_system_mute_linux(mute: bool) -> None:
+    """Mute or unmute system audio using PipeWire on Linux."""
     subprocess.run(
         ["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "1" if mute else "0"],
         capture_output=True,
     )
+
+
+def _set_system_mute_windows(mute: bool) -> None:
+    """Mute or unmute system audio using pycaw on Windows."""
+    from pycaw.pycaw import AudioUtilities
+
+    speakers = AudioUtilities.GetSpeakers()
+    speakers.EndpointVolume.SetMute(mute, None)
 
 
 class State(Enum):
@@ -36,11 +55,25 @@ class QuickSpeech:
         self.recorder = AudioRecorder(sample_rate=16000, channels=1)
         self.transcriber: Transcriber | None = None  # Lazy load
         self.notifier = SoundNotifier()
+        self._pressed_keys: set = set()
+        self._cmd_keys = {keyboard.Key.cmd, keyboard.Key.cmd_l, keyboard.Key.cmd_r}
 
     def _ensure_transcriber(self) -> None:
         """Load transcriber on first use."""
         if self.transcriber is None:
             self.transcriber = Transcriber()
+
+    def _on_press(self, key: keyboard.Key | keyboard.KeyCode) -> None:
+        """Handle key press events."""
+        self._pressed_keys.add(key)
+        # Only trigger on F12 press when Super is already held
+        if key == keyboard.Key.f12:
+            if self._pressed_keys & self._cmd_keys:
+                self.toggle_recording()
+
+    def _on_release(self, key: keyboard.Key | keyboard.KeyCode) -> None:
+        """Handle key release events."""
+        self._pressed_keys.discard(key)
 
     def toggle_recording(self) -> None:
         """Toggle between recording and idle states."""
@@ -53,6 +86,8 @@ class QuickSpeech:
         """Start recording audio."""
         self.state = State.RECORDING
         self.notifier.play_start(wait=True)
+        if sys.platform == "win32":
+            time.sleep(0.2)  # Windows needs extra time for audio buffer to flush
         set_system_mute(True)
         self.recorder.start()
         print("Recording... (press Super+F12 to stop)")
@@ -97,16 +132,27 @@ class QuickSpeech:
         print("Press Ctrl+C to exit.")
         print()
 
-        # Set up global hotkey
-        hotkeys = keyboard.GlobalHotKeys({"<cmd>+<f12>": self.toggle_recording})
-        hotkeys.start()
+        # Set up keyboard listener
+        listener = keyboard.Listener(
+            on_press=self._on_press,
+            on_release=self._on_release,
+        )
+        listener.start()
 
-        try:
-            while True:
-                time.sleep(0.1)
-        except KeyboardInterrupt:
-            print("\nExiting...")
-            hotkeys.stop()
+        # Handle Ctrl+C properly on Windows
+        stop_event = threading.Event()
+
+        def handle_exit(signum, frame):
+            stop_event.set()
+
+        signal.signal(signal.SIGINT, handle_exit)
+        signal.signal(signal.SIGTERM, handle_exit)
+
+        while not stop_event.wait(timeout=1.0):
+            pass
+
+        print("\nExiting...")
+        listener.stop()
 
 
 def main() -> None:

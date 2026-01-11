@@ -6,9 +6,9 @@ Quick Speech runs in the background while you work. Hit Super+F12 anytime you li
 - Mutes your audio, so you can keep listening to your music :)
 - Audio queues for start and stop, so you know its working
 
-This is only tested on Ubuntu Linux x64. Probably doesn't work on anything else. Submit some PRs if you wanna fix that!
+Works on Ubuntu Linux x64 and Windows.
 
-## Installation
+## Installation (Linux)
 
 ```bash
 # 1. Install system dependencies
@@ -22,6 +22,27 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -e .
 ```
+
+## Installation (Windows)
+
+**Requirements:** Python 3.13 (ML dependencies don't have builds for Python 3.14 yet)
+
+```powershell
+# 1. Clone the repository
+git clone https://github.com/utilitydelta/quick-speech
+cd quick-speech
+
+# 2. Create virtual environment and install
+# If you have multiple Python versions, use the py launcher to select 3.13:
+py -3.13 -m venv venv
+.\venv\Scripts\activate
+pip install -e .
+```
+
+**Notes:**
+- Uses **Win+F12** as the hotkey (Super key maps to Win on Windows)
+- Clipboard integration uses the Windows clipboard automatically
+- No additional system dependencies required
 
 ## Usage
 
@@ -53,7 +74,7 @@ QUICK_SPEECH_MODEL=base.en quick-speech
 QUICK_SPEECH_MODEL=small.en quick-speech
 ```
 
-## Run at Startup
+## Run at Startup (Linux)
 
 To have Quick Speech start automatically when you log in, create a systemd user service:
 
@@ -90,8 +111,25 @@ systemctl --user start quick-speech.service
 - Stop: `systemctl --user stop quick-speech.service`
 - Disable autostart: `systemctl --user disable quick-speech.service`
 
+## Run at Startup (Windows)
+
+Run this in PowerShell from the quick-speech directory to create a startup shortcut:
+
+```powershell
+$WshShell = New-Object -ComObject WScript.Shell
+$Shortcut = $WshShell.CreateShortcut("$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\Quick Speech.lnk")
+$Shortcut.TargetPath = "$PWD\venv\Scripts\pythonw.exe"
+$Shortcut.Arguments = "-m quick_speech.main"
+$Shortcut.WorkingDirectory = "$PWD"
+$Shortcut.Save()
+```
+
+**Useful commands:**
+- Remove from startup: `Remove-Item "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\Quick Speech.lnk"`
+
 ## Notes
 
 - First run downloads the Whisper model (~150MB for base.en)
-- Works on X11 sessions (use "GNOME on Xorg" if on Wayland)
 - Requires microphone access
+- **Linux:** Works on X11 sessions
+- **Windows:** Run from a terminal with admin privileges if hotkey registration fails
