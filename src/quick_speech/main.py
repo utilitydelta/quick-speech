@@ -55,7 +55,7 @@ class QuickSpeech:
         self.notifier.play_start(wait=True)
         set_system_mute(True)
         self.recorder.start()
-        print("Recording... (press F9 to stop)")
+        print("Recording... (press Super+F12 to stop)")
 
     def _stop_and_transcribe(self) -> None:
         """Stop recording and transcribe the audio."""
@@ -93,12 +93,12 @@ class QuickSpeech:
     def run(self) -> None:
         """Run the application."""
         print("Quick Speech ready.")
-        print("Press F9 to start/stop recording.")
+        print("Press Super+F12 to start/stop recording.")
         print("Press Ctrl+C to exit.")
         print()
 
         # Set up global hotkey
-        hotkeys = keyboard.GlobalHotKeys({"<f9>": self.toggle_recording})
+        hotkeys = keyboard.GlobalHotKeys({"<cmd>+<f12>": self.toggle_recording})
         hotkeys.start()
 
         try:
