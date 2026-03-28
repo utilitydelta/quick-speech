@@ -19,8 +19,18 @@ def set_system_mute(mute: bool) -> None:
     """Mute or unmute system audio."""
     if sys.platform == "win32":
         _set_system_mute_windows(mute)
+    elif sys.platform == "darwin":
+        _set_system_mute_macos(mute)
     else:
         _set_system_mute_linux(mute)
+
+
+def _set_system_mute_macos(mute: bool) -> None:
+    """Mute or unmute system audio using osascript on macOS."""
+    subprocess.run(
+        ["osascript", "-e", f"set volume output muted {'true' if mute else 'false'}"],
+        capture_output=True,
+    )
 
 
 def _set_system_mute_linux(mute: bool) -> None:
