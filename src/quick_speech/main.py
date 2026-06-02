@@ -1,5 +1,6 @@
 """Main entry point for Quick Speech application."""
 
+import queue
 import signal
 import subprocess
 import sys
@@ -67,6 +68,7 @@ class QuickSpeech:
         self.notifier = SoundNotifier()
         self._pressed_keys: set = set()
         self._cmd_keys = {keyboard.Key.cmd, keyboard.Key.cmd_l, keyboard.Key.cmd_r}
+        self._command_queue: queue.Queue = queue.Queue()
 
     def _ensure_transcriber(self) -> None:
         """Load transcriber on first use."""
@@ -79,7 +81,8 @@ class QuickSpeech:
         # Only trigger on F12 press when Super is already held
         if key == keyboard.Key.f12:
             if self._pressed_keys & self._cmd_keys:
-                self.toggle_recording()
+                # Queue the toggle to run on main thread (Windows audio needs main thread)
+                self._command_queue.put("toggle")
 
     def _on_release(self, key: keyboard.Key | keyboard.KeyCode) -> None:
         """Handle key release events."""
@@ -96,8 +99,6 @@ class QuickSpeech:
         """Start recording audio."""
         self.state = State.RECORDING
         self.notifier.play_start(wait=True)
-        if sys.platform == "win32":
-            time.sleep(0.2)  # Windows needs extra time for audio buffer to flush
         set_system_mute(True)
         self.recorder.start()
         print("Recording... (press Super+F12 to stop)")
@@ -158,8 +159,14 @@ class QuickSpeech:
         signal.signal(signal.SIGINT, handle_exit)
         signal.signal(signal.SIGTERM, handle_exit)
 
-        while not stop_event.wait(timeout=1.0):
-            pass
+        # Main loop: process commands on main thread (required for Windows audio)
+        while not stop_event.is_set():
+            try:
+                cmd = self._command_queue.get(timeout=0.1)
+                if cmd == "toggle":
+                    self.toggle_recording()
+            except queue.Empty:
+                pass
 
         print("\nExiting...")
         listener.stop()
