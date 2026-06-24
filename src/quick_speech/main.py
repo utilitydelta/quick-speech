@@ -143,12 +143,15 @@ class QuickSpeech:
         print("Press Ctrl+C to exit.")
         print()
 
-        # Set up keyboard listener
-        listener = keyboard.Listener(
-            on_press=self._on_press,
-            on_release=self._on_release,
-        )
-        listener.start()
+        # Set up keyboard listener (Windows/macOS only). On Linux the desktop
+        # keybinding sends SIGUSR1; listening here too would double-toggle on X11.
+        listener = None
+        if sys.platform in ("win32", "darwin"):
+            listener = keyboard.Listener(
+                on_press=self._on_press,
+                on_release=self._on_release,
+            )
+            listener.start()
 
         # Handle Ctrl+C properly on Windows
         stop_event = threading.Event()
@@ -158,6 +161,15 @@ class QuickSpeech:
 
         signal.signal(signal.SIGINT, handle_exit)
         signal.signal(signal.SIGTERM, handle_exit)
+
+        # SIGUSR1 toggles recording — used by desktop keybindings on Wayland,
+        # where pynput cannot observe global hotkeys.
+        if hasattr(signal, "SIGUSR1"):
+
+            def handle_toggle(signum, frame):
+                self._command_queue.put("toggle")
+
+            signal.signal(signal.SIGUSR1, handle_toggle)
 
         # Main loop: process commands on main thread (required for Windows audio)
         while not stop_event.is_set():
@@ -169,7 +181,8 @@ class QuickSpeech:
                 pass
 
         print("\nExiting...")
-        listener.stop()
+        if listener is not None:
+            listener.stop()
 
 
 def main() -> None:
